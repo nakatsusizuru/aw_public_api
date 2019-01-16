@@ -12,13 +12,17 @@ module.exports = function (app) {
             queryParams['team'] = false;
         }
 
-        if (!queryParams['name'] || !queryParams['msg'] || !queryParams['to']) {
+        if (!queryParams['type'] || !queryParams['name'] || !queryParams['msg'] || !queryParams['to']) {
             return res.status(500).send("Invalid parameters");
         }
 
         translate(queryParams['msg'], {from: queryParams['from'], to: queryParams['to']})
             .then(reply => {
-                return res.status(200).send("" + reply.from.language.iso + " -> " + queryParams['to'] + "" + ((queryParams['team'] == 1) ? ' (team) ' : ' ') + queryParams['name'] + ": " + reply.text);
+                let message = reply.from.language.iso + " -> " + queryParams['to'] + "" + ((queryParams['team'] == 1) ? ' (team) ' : ' ') + queryParams['name'] + ": " + reply.text;
+                if (queryParams['type'] == "ME") {
+                    message = reply.text;
+                }
+                return res.status(200).send(queryParams['type'] + " " + message);
             }).catch(err => {
             return res.status(500).send(err)
         });
