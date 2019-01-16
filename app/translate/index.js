@@ -19,7 +19,7 @@ module.exports = function (app) {
         translate(queryParams['msg'], {from: queryParams['from'], to: queryParams['to']})
             .then(reply => {
                 let message = reply.from.language.iso + " -> " + queryParams['to'] + "" + ((queryParams['team'] == 1) ? ' (team) ' : ' ') + queryParams['name'] + ": " + reply.text;
-                if (queryParams['type'] == "ME") {
+                if (queryParams['type'] == "ME_ALL" || queryParams['type'] == "ME_TEAM") {
                     message = reply.text;
                 }
                 return res.status(200).send(queryParams['type'] + " " + message);
