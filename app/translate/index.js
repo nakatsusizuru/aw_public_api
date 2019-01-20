@@ -1,4 +1,4 @@
-const translate = require('@vitalets/google-translate-api');
+const translate = require('@k3rn31p4nic/google-translate-api');
 
 module.exports = function (app) {
     app.get('/translate', (req, res) => {
@@ -6,10 +6,6 @@ module.exports = function (app) {
 
         if (!queryParams['from']) {
             queryParams['from'] = "auto";
-        }
-
-        if (!queryParams['team']) {
-            queryParams['team'] = false;
         }
 
         if (!queryParams['type'] || !queryParams['name'] || !queryParams['msg'] || !queryParams['to']) {
@@ -22,7 +18,7 @@ module.exports = function (app) {
                 if (queryParams['type'] == "ME_ALL" || queryParams['type'] == "ME_TEAM") {
                     message = reply.text;
                 }
-                return res.status(200).send(queryParams['type'] + " " + message);
+                return res.status(200).send(message);
             }).catch(err => {
             return res.status(500).send(err)
         });
