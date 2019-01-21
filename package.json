@@ -13,6 +13,10 @@
     "@k3rn31p4nic/google-translate-api": "^1.0.5",
     "body-parser": "^1.18.3",
     "express": "^4.16.4",
-    "mongodb": "^2.2.16"
+    "express-ws": "^4.0.0",
+    "http": "0.0.0",
+    "human-readable-ids": "^1.0.4",
+    "mongodb": "^2.2.16",
+    "ws": "^6.1.2"
   }
 }
