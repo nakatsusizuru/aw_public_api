@@ -5,6 +5,55 @@ module.exports = function (app, wss) {
     let clients = [];
     let currentGames = [];
 
+    app.ws('/sharedesp/:id', (ws, req) => {
+        if (!clients[req.params.id]) {
+            clients[req.params.id] = [];
+        }
+
+        if (clients[req.params.id].findIndex(o => o == ws) == -1) {
+            clients[req.params.id].push(ws);
+        }
+        ws.on('connection', (c) => {
+            c.isAlive = true;
+            c.on('pong', () => {
+                c.isAlive = true;
+            });
+        });
+    });
+
+    app.get('/sharedesp', (req, res) => {
+        let queryParams = req.query;
+        if (!currentGames[queryParams['ip']]) {
+            return res.status(200).send("ok");
+        }
+
+        let entities = currentGames[queryParams['ip']].entities;
+        let data = [];
+
+        entities.forEach((entity) => {
+            if (entity.type === "player" && !entity.isDead && Date.now() - entity.lastUpdate < 50) {
+                let playerData = [
+                    entity.type,
+                    entity.index,
+                    entity.team,
+                    entity.name,
+                    entity.isDead,
+                    entity.position.x,
+                    entity.position.y,
+                    entity.position.z,
+                    entity.hp,
+                    entity.maxHp,
+                    entity.ping,
+                    entity.weapon
+                ];
+
+                data.push(playerData.join("\t"));
+            }
+        });
+
+        return res.status(200).send(data.join("\n"));
+    });
+
     app.get('/sharedesp/update', (req, res) => {
         let queryParams = req.query;
         if (!currentGames[queryParams['ip']]) {
@@ -109,21 +158,5 @@ module.exports = function (app, wss) {
             });
 
         return res.status(200).send(currentGames[queryParams['ip']].name);
-    });
-
-    app.ws('/sharedesp/:id', (ws, req) => {
-        if (!clients[req.params.id]) {
-            clients[req.params.id] = [];
-        }
-
-        if (clients[req.params.id].findIndex(o => o == ws) == -1) {
-            clients[req.params.id].push(ws);
-        }
-     ws.on('connection', (c) => {
-         c.isAlive = true;
-         c.on('pong', () => {
-            c.isAlive = true;
-         });
-     });
     });
 };
