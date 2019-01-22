@@ -53,6 +53,7 @@ module.exports = function (app, io) {
                 rounds: parseInt(queryParams['rounds']),
                 entities: []
             };
+            console.log(currentGames[queryParams['ip']].name)
         }
 
         currentGames[queryParams['ip']].mapName = queryParams['mapName'];
@@ -93,6 +94,7 @@ module.exports = function (app, io) {
                     maxHp: parseInt(parts[10]),
                     ping: parseInt(parts[11]),
                     weapon: parts[12],
+                    gameTime: parseFloat(parts[13]),
                     lastUpdate: Date.now()
                 };
             }
@@ -109,6 +111,7 @@ module.exports = function (app, io) {
                         z: parseFloat(parts[4]),
                     },
                     time: parseFloat(parts[5]),
+                    gameTime: parseFloat(parts[6]),
                     lastUpdate: Date.now()
                 };
             }
@@ -125,13 +128,14 @@ module.exports = function (app, io) {
                         z: parseFloat(parts[4]),
                     },
                     time: parseFloat(parts[5]),
+                    gameTime: parseFloat(parts[6]),
                     lastUpdate: Date.now()
                 };
             }
 
             if (existingId !== -1 && newEntity) {
-                let lastUpdate = entities[existingId].lastUpdate;
-                if (lastUpdate < newEntity.lastUpdate) {
+                let lastUpdate = entities[existingId].gameTime;
+                if (lastUpdate < newEntity.gameTime) {
                     entities[existingId] = newEntity
                 }
             } else if (newEntity) {
