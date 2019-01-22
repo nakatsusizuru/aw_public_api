@@ -21,7 +21,7 @@ module.exports = function (app, io) {
         let data = [];
 
         entities.forEach((entity) => {
-            if (entity.type === "player" && !entity.isDead && Date.now() - entity.lastUpdate < 100) {
+            if (entity.type === "player" && !entity.isDead && Date.now() - entity.lastUpdate < 3000) {
                 let playerData = [
                     entity.type,
                     entity.index,
