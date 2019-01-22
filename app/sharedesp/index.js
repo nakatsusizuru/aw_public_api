@@ -1,24 +1,14 @@
 
 
-module.exports = function (app, wss) {
+module.exports = function (app, io) {
     const hri = require('human-readable-ids').hri;
-    let clients = [];
     let currentGames = [];
 
-    app.ws('/sharedesp/:id', (ws, req) => {
-        if (!clients[req.params.id]) {
-            clients[req.params.id] = [];
+    io.on('connection', (socket) => {
+        let name = socket.handshake.query.name;
+        if (name) {
+            socket.join(name);
         }
-
-        if (clients[req.params.id].findIndex(o => o == ws) == -1) {
-            clients[req.params.id].push(ws);
-        }
-        ws.on('connection', (c) => {
-            c.isAlive = true;
-            c.on('pong', () => {
-                c.isAlive = true;
-            });
-        });
     });
 
     app.get('/sharedesp', (req, res) => {
@@ -31,7 +21,7 @@ module.exports = function (app, wss) {
         let data = [];
 
         entities.forEach((entity) => {
-            if (entity.type === "player" && !entity.isDead && Date.now() - entity.lastUpdate < 50) {
+            if (entity.type === "player" && !entity.isDead && Date.now() - entity.lastUpdate < 100) {
                 let playerData = [
                     entity.type,
                     entity.index,
@@ -63,7 +53,6 @@ module.exports = function (app, wss) {
                 rounds: parseInt(queryParams['rounds']),
                 entities: []
             };
-            clients[currentGames[queryParams['ip']].name] = [];
         }
 
         currentGames[queryParams['ip']].mapName = queryParams['mapName'];
@@ -91,7 +80,7 @@ module.exports = function (app, wss) {
                 newEntity = {
                     type: parts[0],
                     index: parseInt(parts[1]),
-                    team: parts[2],
+                    team: parseInt(parts[2]),
                     name: parts[3],
                     isDead: parts[4] === "true",
                     position: {
@@ -150,12 +139,7 @@ module.exports = function (app, wss) {
             }
         });
 
-        wss.getWss().clients
-            .forEach(client => {
-                if (client !== wss && clients[currentGames[queryParams['ip']].name].findIndex(o => o == client) > -1) {
-                    client.send(JSON.stringify(currentGames[queryParams['ip']]));
-                }
-            });
+        io.sockets.in(currentGames[queryParams['ip']].name).emit("data", currentGames[queryParams['ip']]);
 
         return res.status(200).send(currentGames[queryParams['ip']].name);
     });
