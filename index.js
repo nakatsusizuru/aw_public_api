@@ -1,7 +1,7 @@
 const app = require('express')();
 const server = app.listen(80);
 const io = require('socket.io').listen(server, {
-    origins: ["*/*"]
+    origins: ["*:*"]
 });
 
 const bodyParser = require('body-parser');
