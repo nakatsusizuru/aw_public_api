@@ -17,6 +17,7 @@ app.use(function (req, res, next) {
 
 require('./app/translate')(app, io);
 require('./app/sharedesp')(app, io);
+require('./app/awusers')(app, io);
 
 app.get('/', (req, res) => {
     res.send('Fuck you');
