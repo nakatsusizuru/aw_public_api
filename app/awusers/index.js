@@ -67,16 +67,8 @@ module.exports = function (app) {
 					currentGames.splice(i, 1);
 				}
 
-			});
-					
-			game.aw_users.forEach(function(user, j)
-			{
-				if (Date.now() - user.lastUpdate > 30000)
-				{
-					game.aw_users.splice(j, 1);
-				}
+			});	
 
-			});
 		}
 
 		for (const key of Object.keys(currentGames)) {
