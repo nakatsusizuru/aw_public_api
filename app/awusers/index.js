@@ -48,7 +48,7 @@ module.exports = function (app) {
 		
 	app.get("/awusers/list", (req, res) => {
 		let queryParams = req.query;
-		let listedSevers = [];
+		let listedServers = [];
 
 		if (queryParams["refresh"] == "true") {
 
@@ -81,10 +81,10 @@ module.exports = function (app) {
 
 		for (const key of Object.keys(currentGames)) {
 			let game = currentGames[key];
-			listedSevers.push("( ip: " + key + " [ usercount: " + game.aw_users.length + " ] )");
+			listedServers.push("( ip: " + key + " [ usercount: " + game.aw_users.length + " ] )");
 		}
 
-		return res.status(200).send(listedSevers.join("\t"));
+		return res.status(200).send(listedServers.join("\t"));
 	});
 
 
