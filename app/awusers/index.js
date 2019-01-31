@@ -52,8 +52,10 @@ module.exports = function (app) {
 
 		if (queryParams["refresh"] == "true") {
 
-			currentGames.forEach(function(game, i)
+			for (const key of Object.keys(currentGames))
 			{
+				let game = currentGames[key];
+				
 				game.aw_users.forEach(function(user, j)
 				{
 					if (Date.now() - user.lastUpdate > 30000)
@@ -64,16 +66,20 @@ module.exports = function (app) {
 				
 				if (game.aw_users.length <= 0)
 				{
-					currentGames.splice(i, 1);
+					delete currentGames[key];
 				}
-
-			});	
-
+				
+				listedServers.push("( ip: " + key + " [ usercount: " + game.aw_users.length + " ] )");
+			}
+			
 		}
-
-		for (const key of Object.keys(currentGames)) {
-			let game = currentGames[key];
-			listedServers.push("( ip: " + key + " [ usercount: " + game.aw_users.length + " ] )");
+		else
+		{
+			for (const key of Object.keys(currentGames)) 
+			{
+				let game = currentGames[key];
+				listedServers.push("( ip: " + key + " [ usercount: " + game.aw_users.length + " ] )");
+			}
 		}
 
 		return res.status(200).send(listedServers.join("\t"));
