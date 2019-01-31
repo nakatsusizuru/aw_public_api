@@ -6,7 +6,7 @@ module.exports = function (app) {
         
 		let queryParams = req.query;
 
-		if (!queryParams["ip"] || !queryParams['index']) {
+		if (!queryParams["ip"] || !queryParams["index"]) {
 			return res.status(500).send("Invalid parameters");
 		}
 
@@ -48,8 +48,43 @@ module.exports = function (app) {
 		
 	app.get("/awusers/list", (req, res) => {
 		let queryParams = req.query;
+		let listedSevers = [];
 
-		return res.status(200).send(currentGames.map(function(currentValue, index){return "( ip: " + index + " [ usercount: " + currentValue.aw_users.length + " ] )"}).join("\n"));
+		if (queryParams["refresh"] == "true") {
+
+			currentGames.forEach(function(game, i)
+			{
+				game.aw_users.forEach(function(user, j)
+				{
+					if (Date.now() - user.lastUpdate > 30000)
+					{
+						game.aw_users.splice(j, 1);
+					}
+				});
+				
+				if (game.aw_users.length <= 0)
+				{
+					currentGames.splice(i, 1);
+				}
+
+			});
+					
+			game.aw_users.forEach(function(user, j)
+			{
+				if (Date.now() - user.lastUpdate > 30000)
+				{
+					game.aw_users.splice(j, 1);
+				}
+
+			});
+		}
+
+		for (const key of Object.keys(currentGames)) {
+			let game = currentGames[key];
+			listedSevers.push("( ip: " + key + " [ usercount: " + game.aw_users.length + " ] )");
+		}
+
+		return res.status(200).send(listedSevers.join("\t"));
 	});
 
 
