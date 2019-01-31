@@ -2,16 +2,16 @@ module.exports = function (app) {
 	
 	let currentGames = [];
 	
-	app.get('/awusers', (req, res) => {
+	app.get("/awusers", (req, res) => {
         
 		let queryParams = req.query;
 
-		if (!queryParams['ip'] || !queryParams['index']) {
+		if (!queryParams["ip"] || !queryParams['index']) {
 			return res.status(500).send("Invalid parameters");
 		}
 
-		if (!currentGames[queryParams['ip']]) {
-			currentGames[queryParams['ip']] = {
+		if (!currentGames[queryParams["ip"]]) {
+			currentGames[queryParams["ip"]] = {
 				aw_users: []
 			};
 		}
@@ -41,8 +41,16 @@ module.exports = function (app) {
 			}
 		});
 
-		currentGames[queryParams['ip']].aw_users = aw_users;
-		return res.status(200).send(currentGames[queryParams["ip"]].aw_users.map(e => {return e.index}).join(","));
+		currentGames[queryParams["ip"]].aw_users = aw_users;
+		return res.status(200).send(currentGames[queryParams["ip"]].aw_users.map(e => {return e.index}).join("\t"));
 		
-    });
+	});
+		
+	app.get("/awusers/list", (req, res) => {
+		let queryParams = req.query;
+
+		return res.status(200).send(currentGames.map(function(currentValue, index){return "( ip: " + index + " [ usercount: " + currentValue.aw_users.length + " ] )"}).join("\n"));
+	});
+
+
 };
