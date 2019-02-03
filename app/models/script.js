@@ -1,7 +1,9 @@
 'use strict';
+
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const moment = require('moment');
+const User = mongoose.model('User');
 
 const ScriptSchema = new Schema({
     title: {
@@ -12,7 +14,7 @@ const ScriptSchema = new Schema({
     date: {
         type: Date,
         get: (val) => {
-            return moment(val).format("YYYY-MM-DD HH:mm")
+            return moment(val).utc().format("YYYY-MM-DD HH:mm")
         },
         default: new Date()
     },
@@ -34,7 +36,7 @@ const ScriptSchema = new Schema({
     },
     image: {
         type: String,
-        required: "An image URL is required"
+        required: "An image is required"
     },
     code: {
         type: String,
@@ -47,6 +49,26 @@ const ScriptSchema = new Schema({
     callbacks: [Object],
     accessTokens: [String]
 });
+
+ScriptSchema.statics.userCanView = (user, script) => {
+    // Moderators can always access scripts
+    if (User.hasRole(user, User.userRoles.MODERATOR)) {
+        return true;
+    }
+
+    // User can view publicly accessible scripts
+    if (!user) {
+        return script.accessTokens.length === 0;
+    }
+
+    // User can access his own scripts
+    if (script.user.equals(user._id)) {
+        return true;
+    }
+
+    // User can be assigned access tokens for scripts
+    return script.accessTokens.length === 0 || script.accessTokens.some(token => user.scriptTokens.includes(token));
+};
 
 ScriptSchema.set('toObject', { getters: true });
 ScriptSchema.set('toJSON', { getters: true });

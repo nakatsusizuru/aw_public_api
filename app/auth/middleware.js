@@ -11,8 +11,8 @@ module.exports = {
     },
     hasRole: (role) => {
         return (req, res, next) => {
-            User.findById(req.session.userId, (err, user) => {
-                if (err) return res.status(500).json({message: ""});
+            User.findById(req.body.userId, (err, user) => {
+                if (err) return res.status(500).json({message: "An error occurred while retrieving your user"});
                 if (!User.hasRole(user, role)) return res.status(401).json({message: "You do not have access to this call"});
                 return next();
             });

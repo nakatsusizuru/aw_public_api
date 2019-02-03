@@ -15,11 +15,14 @@ module.exports = function(app) {
 
     // GET /scripts/:id - Any member can retrieve a script's detail page (if they are the owner or have an access token / are a moderator+)
     // PUT /scripts/:id - Any member can update their own script's information (If they are the owner), Moderator+ can also edit scripts
-    // DELETE /scripts/:id - Any member can delete their own script (If they are the owner), Moderator+ can also remove any script
+    // TODO: DELETE /scripts/:id - Any member can delete their own script (If they are the owner), Moderator+ can also remove any script
     app.route('/scripts/:scriptId')
         .get(middleware.isLoggedIn, middleware.hasRole(User.userRoles.MEMBER), controller.getScript)
-        .put(middleware.isLoggedIn, middleware.hasRole(User.userRoles.MEMBER), controller.updateScript)
-        .delete(middleware.isLoggedIn, middleware.hasRole(User.userRoles.MEMBER),  controller.deleteScript);
+        .put(middleware.isLoggedIn, middleware.hasRole(User.userRoles.MODERATOR), controller.updateScript)
+        // .delete(middleware.isLoggedIn, middleware.hasRole(User.userRoles.MODERATOR),  controller.deleteScript);
+
+    app.route('/scripts/image/:scriptId')
+        .get(controller.getImage);
 
     // GET /scripts/code/:id - Anyone can retrieve a script's code (If they are the owner / have an access token), or are a moderator+
     app.route('/scripts/code/:scriptId')

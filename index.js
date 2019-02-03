@@ -4,12 +4,13 @@ const app = require('express')();
 const server = app.listen(80);
 const cors = require('cors');
 const logger = require('morgan');
+const jwt = require('jsonwebtoken');
 const io = require('socket.io').listen(server, {
     origins: ["*:*"]
 });
 const mongoose = require('mongoose');
-const Script = require('./app/models/script');
 const User = require('./app/models/user');
+const Script = require('./app/models/script');
 
 const bodyParser = require('body-parser');
 mongoose.Promise = global.Promise;
@@ -19,7 +20,7 @@ mongoose.connect(`mongodb://${process.env.MONGODB_HOST}:${process.env.MONGODB_PO
 app.use(logger('dev'));
 app.use(cors());
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({limit: '20mb'}));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(function (req, res, next) {
@@ -35,12 +36,14 @@ require('./app/sharedesp')(app, io);
 
 app.use(function (req, res, next) {
     let token = req.headers['x-access-token'] || req.query.token;
-    if (token) {
+    if (token && token !== '') {
         jwt.verify(token, process.env.JWT_SECRET, function (err, decoded) {
             if (err) {
                 return res.json({message: "Your authentication key is invalid"});
             } else {
                 req.body.userId = decoded.id;
+                // Update the IP Address for the given user (We just ignore failures)
+                User.findOneAndUpdate({_id: decoded.id}, {ipAddress: req.headers["CF-Connecting-IP"] || req.connection.remoteAddress}, () => {});
                 next();
             }
         });
@@ -56,5 +59,5 @@ app.use((req, res) => {
 });
 
 process.on('unhandledRejection', error => {
-    console.error('Uncaught Error', pe(error));
+    console.error('Uncaught Error', error);
 });

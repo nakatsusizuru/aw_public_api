@@ -21,12 +21,15 @@
     "http": "0.0.0",
     "human-readable-ids": "^1.0.4",
     "jsonwebtoken": "^8.4.0",
+    "luaparse": "^0.2.1",
     "moment": "^2.24.0",
     "mongodb": "^2.2.16",
     "mongoose": "^5.4.8",
     "morgan": "^1.9.1",
+    "sharp": "^0.21.3",
     "socket.io": "^2.2.0",
     "underscore": "^1.9.1",
+    "uuid": "^3.3.2",
     "ws": "^6.1.2"
   },
   "devDependencies": {
