@@ -33,6 +33,7 @@ app.use(function (req, res, next) {
 
 require('./app/translate')(app);
 require('./app/sharedesp')(app, io);
+require('./app/awusers')(app, io);
 
 app.use(function (req, res, next) {
     let token = req.headers['x-access-token'] || req.query.token;
