@@ -7,7 +7,12 @@ const sortableFields = ["date", "title", "downloads"];
 const sharp = require('sharp');
 const moment = require('moment');
 const luaparse = require('luaparse');
+const luamin = require('luamin');
 const uuid = require('uuid');
+const recaptcha = require('recaptcha-promise');
+recaptcha.init({
+    secret_key: process.env.RECAPTCHA_SECRET
+});
 
 exports.listScripts = (req, res) => {
     let sort = null;
@@ -56,7 +61,7 @@ exports.listScripts = (req, res) => {
             }
 
             // TODO: Should probably make this an aggregated query, but I can't be arsed at this point, this will work just fine for now.
-            return Script.find(filter, 'title date previousId approved author user downloads description image guiObjects callbacks accessTokens', sort);
+            return Script.find(filter, 'title date previousId approved author user downloads description image callbacks accessTokens', sort);
         })
         .then((scripts) => {
             scripts = scripts.filter(obj => Script.userCanView(user, obj));
@@ -73,6 +78,21 @@ exports.listScripts = (req, res) => {
                 });
             }
 
+            let updatedScripts = [];
+            scripts.forEach(script => {
+                if (script.previousId) {
+                    let index = scripts.findIndex(s => s._id.equals(script.previousId));
+                    if (index >= 0) {
+                        updatedScripts.push(index);
+                    }
+                }
+            });
+
+            updatedScripts.forEach(id => {
+                delete scripts[id];
+            });
+
+            scripts = scripts.filter(e => e);
             return res.status(200).json(scripts);
         })
         .catch(helper.handleError(res));
@@ -83,13 +103,27 @@ exports.createScript = (req, res) => {
     req.body.date = undefined;
     req.body.downloads = 0;
     req.body.user = req.body.userId;
+    req.body.originalCode = req.body.code;
+    if (!req.body.previousId && req.body._id) {
+        req.body.previousId = req.body._id;
+    }
     req.body.accessTokens = (typeof req.body.accessTokens === "string") ? req.body.accessTokens.split(',') : req.body.accessTokens;
     delete req.body._id;
 
     let createdScript;
-
-    User.getCurrentUser(req.body.userId)
+    let foundUser;
+    recaptcha(req.body.captcha)
+        .then(success => {
+            if (!success) {
+                throw {
+                    error: 400,
+                    message: "Invalid captcha"
+                }
+            }
+            return User.getCurrentUser(req.body.userId);
+        })
         .then((user) => {
+            foundUser = user;
             req.body.user = user._id;
             req.body.author = user.forumName;
             return sharp(new Buffer(req.body.image.replace(/^data:image\/png;base64,/, ""), 'base64'))
@@ -104,7 +138,17 @@ exports.createScript = (req, res) => {
         .then(script => {
             createdScript = script;
             if (script.previousId) {
-                return Script.find({_id: {$ne: script._id}, previousId: script.previousId}).remove();
+                return Script.find({_id: {$ne: script._id}, previousId: script.previousId})
+                    .then(docs => {
+                        if (Array.isArray(docs)) {
+                            docs.forEach(doc => {
+                                // Make sure that we only remove our own x)
+                                if (User.hasRole(foundUser, User.userRoles.MODERATOR) || doc.user.equals(foundUser._id)) {
+                                    doc.remove();
+                                }
+                            })
+                        }
+                    });
             }
         })
         .then(() => {
@@ -130,8 +174,9 @@ exports.getImage = (req, res) => {
 
             if (!Script.userCanView(user, script)) {
                 throw {
-                    message: "No access to the given resource",
-                    status: 401
+                    message: "access_denied",
+                    status: 401,
+                    send: true
                 }
             }
 
@@ -164,68 +209,46 @@ exports.getScript = (req, res) => {
 };
 
 function getTransformedCode(code) {
-    let guiObjects = [];
     let callbacks = [];
+
 
     const parsedCode = luaparse.parse(code);
 
-    // Remove comments
-    parsedCode.comments.forEach((comment) => {
-        code = code.replace(comment.raw, '');
-    });
-
-    const scope = "S" + uuid.v4().replace(/-/g, '').substr(0, 10);
-    code = "script_scopes." + scope + " = {};\n" + code;
-
     parsedCode.body.forEach((element) => {
-        // Replace all global 'local' variable names with something unique
-        if (element.type === 'LocalStatement') {
-            element.variables.forEach((variable) => {
-                if (variable.type === 'Identifier') {
-                    let exp = new RegExp('local ' + variable.name);
-                    code = code.replace(exp, variable.name);
-                    code = code.replace(new RegExp(variable.name, "g"), "script_scopes." + scope + "." + variable.name)
-                }
-            });
-
-            element.init.forEach((init, index) => {
-                // For each GUI element, add it to the list
-                if (init.type === 'CallExpression'
-                    && init.base.base.name === 'gui'
-                    && !(init.base.identifier.name in ['SetValue', 'GetValue', 'Reference', 'Command'])
-                ) {
-                    guiObjects.push({scope: scope, guiObject: element.variables[index].name});
-                }
-            });
-        } else if (element.type === 'FunctionDeclaration') {
-            let exp = new RegExp(element.identifier.name, 'g');
-            code = code.replace(exp, "script_scopes." + scope + "." + element.identifier.name);
-        } else if (element.type === 'CallStatement' && element.expression.type === 'CallExpression') {
-            let expression = element.expression;
-
-            // Handle callbacks.Register
-            if (expression.base.base.name === 'callbacks' && expression.base.identifier.name === 'Register') {
-                let uniqueId = "C" + uuid.v4().replace(/-/g, '').substr(0, 10);
-                // If we already have a unique callback ID, replace it, otherwise add it
-                if (expression.arguments[1].type === 'StringLiteral') {
-                    code.replace(new RegExp(expression.arguments[1].value, 'g'), uniqueId)
-                } else {
-                    // Add unique Id
-                    code.replace(new RegExp(expression.arguments[0].raw, 'g'), expression.arguments[0].raw + ',"' + uniqueId + '"');
-                }
-
-                callbacks.push({id: expression.arguments[0].value, uniqueId: uniqueId});
-            }
-        }
+        code = parseElement(element, callbacks, code);
     });
 
-    code = code.replace(/\t/g, ' ');
-    code = code.replace(/\n\n/g, ' ');
-    code = code.replace(/\n/g, ' ');
+    code = luamin.minify(code);
 
     return {
-        code, guiObjects, callbacks
+        code, callbacks
     }
+}
+
+function parseElement(element, callbacks, code) {
+    // Replace all global 'local' variable names with something unique
+    if (element.type === 'FunctionDeclaration') {
+        // Rewrite functions to be local
+        if (element.isLocal === false) {
+            code = code.replace(new RegExp("function.*" + element.identifier.name), "local function " + element.identifier.name);
+        }
+    } else if (element.type === 'CallStatement' && element.expression.type === 'CallExpression') {
+        let expression = element.expression;
+
+        // Handle callbacks.Register
+        if (expression.base.base.name === 'callbacks' && expression.base.identifier.name === 'Register') {
+            let uniqueId = "C" + uuid.v4().replace(/-/g, '').substr(0, 10);
+            // If we already have a unique callback ID, replace it, otherwise add it
+            if (expression.arguments[1].type === 'StringLiteral') {
+                code = code.replace(new RegExp(expression.arguments[1].value, 'g'), uniqueId)
+            } else {
+                code = code.replace(new RegExp(expression.arguments[0].raw, 'g'), expression.arguments[0].raw + ',"' + uniqueId + '"');
+            }
+
+            callbacks.push({id: expression.arguments[0].value, uniqueId: uniqueId});
+        }
+    }
+    return code;
 }
 
 exports.updateScript = (req, res) => {
@@ -234,19 +257,25 @@ exports.updateScript = (req, res) => {
     delete req.body.user;
     delete req.body.downloads;
     delete req.body.image;
+    req.body.originalCode = req.body.code;
 
     const transformed = getTransformedCode(req.body.code);
+
     req.body.code = transformed.code;
-    req.body.guiObjects = transformed.guiObjects;
     req.body.callbacks = transformed.callbacks;
+
+    let prevId = req.body.previousId;
+    let id = req.body._id;
+    delete req.body._id;
+    delete req.body.previousId;
 
     let script;
 
-    Script.findOneAndUpdate({_id: req.body.previousId || req.body._id}, req.body)
+    Script.findOneAndUpdate({_id: prevId}, req.body)
         .then(obj => {
             script = obj;
-            if (req.body.previousId) {
-                return Script.deleteOne({_id: req.body._id});
+            if (prevId) {
+                return Script.find({_id: id}).remove();
             }
         })
         .then(() => {
@@ -272,12 +301,13 @@ exports.getScriptCode = (req, res) => {
         .then(script => {
             if (!Script.userCanView(user, script)) {
                 throw {
-                    message: "No access to the given resource",
-                    status: 401
+                    message: "access_denied",
+                    status: 401,
+                    send: true
                 }
             }
 
-            Script.findOneAndUpdate({_id: req.params._id}, {$inc: {downloads: 1}});
+            Script.findOneAndUpdate({_id: req.params.scriptId}, {$inc: {downloads: 1}}).then().catch();
 
             return res.status(200).send(script.code);
         })

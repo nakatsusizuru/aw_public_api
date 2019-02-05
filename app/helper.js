@@ -6,7 +6,11 @@ module.exports = {
             }
 
             if (error && error.status) {
-                return res.status(500).json({message: error.message});
+                if (!error.send) {
+                    return res.status(error.status).json({message: error.message});
+                } else {
+                    return res.status(error.status).send(error.message)
+                }
             }
             return res.status(500).json({message: "An unexpected error occurred"});
         }

@@ -1,11 +1,24 @@
 require('dotenv').config();
 
+const fs = require('fs');
+
 const app = require('express')();
-const server = app.listen(80);
+const http = require('http');
+const https = require('https');
+
+// HTTP & HTTPS Support
+const privKey = fs.readFileSync('cert/server.key', 'utf8');
+const cert = fs.readFileSync('cert/server.crt', 'utf8');
+const creds = {key: privKey, cert: cert};
+const httpServer = http.createServer(app);
+const httpsServer = https.createServer(creds, app);
+httpServer.listen(process.env.HTTP_PORT);
+httpsServer.listen(process.env.HTTPS_PORT);
+
 const cors = require('cors');
 const logger = require('morgan');
 const jwt = require('jsonwebtoken');
-const io = require('socket.io').listen(server, {
+const io = require('socket.io').listen(httpServer, {
     origins: ["*:*"]
 });
 const mongoose = require('mongoose');
@@ -17,20 +30,21 @@ mongoose.Promise = global.Promise;
 const options = {user: process.env.MONGODB_USER, pass: process.env.MONGODB_PASS, useNewUrlParser: true};
 mongoose.connect(`mongodb://${process.env.MONGODB_HOST}:${process.env.MONGODB_PORT}/${process.env.MONGODB_NAME}?authSource=admin`, options);
 
-app.use(logger('dev'));
+app.use(logger('dev', {
+    skip: function (req, res) {
+        if (req.url === '/sharedesp') {
+            return true;
+        } else {
+            return false;
+        }
+    }
+}));
 app.use(cors());
 
 app.use(bodyParser.json({limit: '20mb'}));
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use(function (req, res, next) {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept-Type');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    next();
-});
-
+// Public API
 require('./app/translate')(app);
 require('./app/sharedesp')(app, io);
 require('./app/awusers')(app, io);
@@ -44,7 +58,7 @@ app.use(function (req, res, next) {
             } else {
                 req.body.userId = decoded.id;
                 // Update the IP Address for the given user (We just ignore failures)
-                User.findOneAndUpdate({_id: decoded.id}, {ipAddress: req.headers["CF-Connecting-IP"] || req.connection.remoteAddress}, () => {});
+                User.findOneAndUpdate({_id: decoded.id}, {ipAddress: req.headers["cf-connecting-ip"] || req.headers['x-forwarded-for'] || req.connection.remoteAddress}, () => {});
                 next();
             }
         });
@@ -52,6 +66,8 @@ app.use(function (req, res, next) {
         next();
     }
 });
+
+// Required login
 require('./app/user')(app);
 require('./app/scriptstore')(app);
 

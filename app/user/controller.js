@@ -5,12 +5,17 @@ const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const jwt = require('jsonwebtoken');
 const helper = require('../helper');
+const recaptcha = require('recaptcha-promise');
+recaptcha.init({
+    secret_key: process.env.RECAPTCHA_SECRET
+});
 
 exports.createUser = (req, res) => {
     if (!req.body.username
         || !req.body.password
         || !req.body.passwordConfirm
-        || !req.body.forumName) {
+        || !req.body.forumName
+        || !req.body.captcha) {
         return res.status(400).json({message: "All fields are required"});
     }
 
@@ -18,24 +23,34 @@ exports.createUser = (req, res) => {
         return res.status(400).json({message: "Passwords do not match"});
     }
 
-    User.create({
-        username: req.body.username,
-        password: req.body.password,
-        forumName: req.body.forumName,
-        ipAddress: req.headers["CF-Connecting-IP"] || req.connection.remoteAddress,
-        role: User.userRoles.MEMBER.name
-    }).then((user) => {
-        if (!user) {
-            throw {
-                message: "User not found",
-                status: 400
+    recaptcha(req.body.captcha)
+        .then(success => {
+            if (!success) {
+                throw {
+                    error: 400,
+                    message: "Invalid captcha"
+                }
             }
-        }
+            return User.create({
+                username: req.body.username,
+                password: req.body.password,
+                forumName: req.body.forumName,
+                ipAddress: req.headers["cf-connecting-ip"] || req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+                role: User.userRoles.MEMBER.name
+            })
+        })
+        .then((user) => {
+            if (!user) {
+                throw {
+                    message: "User not found",
+                    status: 400
+                }
+            }
 
-        const token = jwt.sign({id: user._id}, process.env.JWT_SECRET);
-        user.password = undefined;
-        return res.status(200).json({message: "Successfully Registered Account", user: user, token: token});
-    }).catch(err => {
+            const token = jwt.sign({id: user._id}, process.env.JWT_SECRET);
+            user.password = undefined;
+            return res.status(200).json({message: "Successfully Registered Account", user: user, token: token});
+        }).catch(err => {
         if (err.code === 11000) {
             return res.status(500).json({message: "Username already taken!"});
         }
@@ -138,7 +153,9 @@ exports.updateUser = (req, res) => {
             }
 
             if (req.body.password) {
-                return bcrypt.genSalt().then(salt => {return bcrypt.hash(req.body.password, salt);})
+                return bcrypt.genSalt().then(salt => {
+                    return bcrypt.hash(req.body.password, salt);
+                })
             }
         })
         .then((hash) => {

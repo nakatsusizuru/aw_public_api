@@ -38,6 +38,10 @@ const ScriptSchema = new Schema({
         type: String,
         required: "An image is required"
     },
+    originalCode: {
+        type: String,
+        required: "Original code is required"
+    },
     code: {
         type: String,
         required: "Code is required"
@@ -45,7 +49,6 @@ const ScriptSchema = new Schema({
     approved: {
         type: Boolean
     },
-    guiObjects: [Object],
     callbacks: [Object],
     accessTokens: [String]
 });

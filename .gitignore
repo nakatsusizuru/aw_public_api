@@ -1,3 +1,5 @@
 .idea/
 node_modules/
 .env
+cert/*.key
+cert/*.crt
