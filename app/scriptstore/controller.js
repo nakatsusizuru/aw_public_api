@@ -271,10 +271,10 @@ exports.updateScript = (req, res) => {
 
     let script;
 
-    Script.findOneAndUpdate({_id: prevId}, req.body)
+    Script.findOneAndUpdate({_id: prevId || id}, req.body)
         .then(obj => {
             script = obj;
-            if (prevId) {
+            if (prevId && prevId !== id) {
                 return Script.find({_id: id}).remove();
             }
         })
