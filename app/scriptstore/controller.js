@@ -61,7 +61,7 @@ exports.listScripts = (req, res) => {
             }
 
             // TODO: Should probably make this an aggregated query, but I can't be arsed at this point, this will work just fine for now.
-            return Script.find(filter, 'title date previousId approved author user downloads description image callbacks accessTokens', sort);
+            return Script.find(filter, 'title date previousId approved author user downloads description callbacks accessTokens', sort);
         })
         .then((scripts) => {
             scripts = scripts.filter(obj => Script.userCanView(user, obj));
