@@ -32,7 +32,7 @@ mongoose.connect(`mongodb://${process.env.MONGODB_HOST}:${process.env.MONGODB_PO
 
 app.use(logger('dev', {
     skip: function (req, res) {
-        if (req.url === '/sharedesp') {
+        if (req.url.startsWith('/sharedesp')) {
             return true;
         } else {
             return false;
