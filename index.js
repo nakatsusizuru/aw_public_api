@@ -12,8 +12,8 @@ const cert = fs.readFileSync('cert/server.crt', 'utf8');
 const creds = {key: privKey, cert: cert};
 const httpServer = http.createServer(app);
 const httpsServer = https.createServer(creds, app);
-httpServer.listen(process.env.HTTP_PORT);
-httpsServer.listen(process.env.HTTPS_PORT);
+httpServer.listen(process.env.HTTP_PORT, '0.0.0.0');
+httpsServer.listen(process.env.HTTPS_PORT, '0.0.0.0');
 
 const cors = require('cors');
 const logger = require('morgan');
@@ -45,6 +45,7 @@ app.use(bodyParser.json({limit: '20mb'}));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Public API
+require('./app/routing')(app);
 require('./app/translate')(app);
 require('./app/sharedesp')(app, io);
 require('./app/awusers')(app, io);
