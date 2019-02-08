@@ -53,7 +53,6 @@ module.exports = function (app, io) {
                 rounds: parseInt(queryParams['rounds']),
                 entities: []
             };
-            console.log(currentGames[queryParams['ip']].name)
         }
 
         currentGames[queryParams['ip']].mapName = queryParams['mapName'];

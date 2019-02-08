@@ -6,6 +6,7 @@ const User = mongoose.model('User');
 const jwt = require('jsonwebtoken');
 const helper = require('../helper');
 const recaptcha = require('recaptcha-promise');
+const moment = require('moment');
 recaptcha.init({
     secret_key: process.env.RECAPTCHA_SECRET
 });
@@ -64,7 +65,11 @@ exports.authenticate = (req, res) => {
         return res.status(400).json({message: "All fields are required"});
     }
 
-    User.authenticate(req.body.username, req.body.password)
+    User.authenticate(req.body.username, req.body.password, {
+        date: moment().utc().format("YYYY-MM-DD HH:mm"),
+        ipAddress: req.headers["cf-connecting-ip"] || req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+        userAgent: req.headers['user-agent']
+    })
         .then(data => {
             if (!data || !data.user || !data.token) {
                 throw {
@@ -83,29 +88,47 @@ exports.authenticate = (req, res) => {
 };
 
 exports.getUsers = (req, res) => {
-    return User.find({}, 'id username forumName role ipAddress scriptTokens')
-        .then(users => {
+    let options = {select: 'id username forumName role ipAddress scriptTokens'};
+    let search = {
+        "$or": [
+            {"username": {$regex: '' + req.query.search + '', $options: 'i'}},
+            {"forumName": {$regex: '' + req.query.search + '', $options: 'i'}},
+            {"ipAddress": {$regex: '' + req.query.search + '', $options: 'i'}},
+            {"role": {$regex: '' + req.query.search + '', $options: 'i'}}
+        ]
+    };
+    if (req.query.limit && req.query.offset) {
+        options.limit = parseInt(req.query.limit);
+        options.offset = parseInt(req.query.offset);
+    }
+
+    return User.paginate(search, options)
+        .then(obj => {
+            let users = obj.docs;
+            const total = obj.total;
             users.forEach((user) => {
                 if (User.hasRole(user, User.userRoles.MODERATOR)) {
                     user.ipAddress = "STAFF MEMBER";
                 }
             });
-            return res.status(200).json(users);
+            return res.status(200).json({users, total});
         })
         .catch(helper.handleError(res));
 };
 
 exports.getUser = (req, res) => {
+    let me;
     User.getCurrentUser(req.body.userId)
         .then((user) => {
-            if (!User.hasRole(user, User.userRoles.MODERATOR) && !user._id.equals(req.params.userId)) {
+            me = user;
+            if (!User.hasRole(me, User.userRoles.MODERATOR) && !me._id.equals(req.params.userId)) {
                 throw {
                     message: "You have no access to this user",
                     error: 401
                 };
             }
 
-            return User.findById(req.params.userId, 'username forumName role scriptTokens');
+            return User.findById(req.params.userId, 'username forumName role scriptTokens ipAddress loginAttempts');
         })
         .then(user => {
             if (!user) {
@@ -114,6 +137,14 @@ exports.getUser = (req, res) => {
                     status: 401
                 }
             }
+
+            if (!User.hasRole(me, User.userRoles.ADMIN) && User.hasRole(user, User.userRoles.ADMIN)) {
+                throw {
+                    message: "You have no access to this user",
+                    error: 401
+                }
+            }
+
             return res.status(200).json(user);
         })
         .catch(helper.handleError(res));
@@ -121,9 +152,7 @@ exports.getUser = (req, res) => {
 
 exports.updateUser = (req, res) => {
     if (!req.body.username
-        || !req.body.forumName
-        || !req.body.forumName
-        || !req.body.scriptTokens) {
+        || !req.body.forumName) {
         return res.status(400).json({message: "All fields are required"});
     }
 

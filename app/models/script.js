@@ -1,6 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate');
 const Schema = mongoose.Schema;
 const moment = require('moment');
 const User = mongoose.model('User');
@@ -75,4 +76,5 @@ ScriptSchema.statics.userCanView = (user, script) => {
 
 ScriptSchema.set('toObject', { getters: true });
 ScriptSchema.set('toJSON', { getters: true });
+ScriptSchema.plugin(mongoosePaginate);
 module.exports = mongoose.model('Script', ScriptSchema);

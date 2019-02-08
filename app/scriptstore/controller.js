@@ -15,11 +15,16 @@ recaptcha.init({
 });
 
 exports.listScripts = (req, res) => {
-    let sort = null;
+    let filter = {approved: true};
+    let options = {select: 'title date previousId approved author user downloads description callbacks accessTokens', sort: {}};
     let user;
     if ((req.query.direction === '1' || req.query.direction === '0') && req.query.sort && sortableFields.indexOf(req.query.sort) > -1) {
-        sort = {sort: {}};
-        sort.sort[req.query.sort] = req.query.direction === '0' ? -1 : 1;
+        options.sort[req.query.sort] = req.query.direction === '0' ? -1 : 1;
+    }
+
+    if (req.query.limit && req.query.offset) {
+        options.limit = parseInt(req.query.limit);
+        options.offset = parseInt(req.query.offset);
     }
 
     let isModerator;
@@ -27,11 +32,10 @@ exports.listScripts = (req, res) => {
     User.getCurrentUser(req.body.userId)
         .then((obj) => {
             user = obj;
-            let filter = {approved: true};
             isModerator = User.hasRole(user, User.userRoles.MODERATOR);
 
-            if (isModerator && !req.query.approved) {
-                delete filter.approved;
+            if (isModerator && req.query.approved === 'false') {
+                filter.approved = false;
             }
 
             if (user && req.query.justmine) {
@@ -59,11 +63,11 @@ exports.listScripts = (req, res) => {
                     filter = orFilter;
                 }
             }
-
-            // TODO: Should probably make this an aggregated query, but I can't be arsed at this point, this will work just fine for now.
-            return Script.find(filter, 'title date previousId approved author user downloads description callbacks accessTokens', sort);
+            return Script.paginate(filter, options);
         })
-        .then((scripts) => {
+        .then((obj) => {
+            let scripts = obj.docs;
+            const total = obj.total;
             scripts = scripts.filter(obj => Script.userCanView(user, obj));
 
             // Moderators should always have access
@@ -93,7 +97,7 @@ exports.listScripts = (req, res) => {
             });
 
             scripts = scripts.filter(e => e);
-            return res.status(200).json(scripts);
+            return res.status(200).json({scripts, total});
         })
         .catch(helper.handleError(res));
 };

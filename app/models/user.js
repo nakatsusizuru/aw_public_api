@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate');
 const Schema = mongoose.Schema;
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -28,16 +29,16 @@ const UserSchema = new Schema({
         type: String,
         required: true
     },
-    scriptTokens: [Object]
+    scriptTokens: [Object],
+    loginAttempts: [Object]
 });
 
-UserSchema.statics.authenticate = (username, password) => {
+UserSchema.statics.authenticate = (username, password, loginAttemptRecord) => {
     return new Promise((resolve, reject) => {
         User.findOne({username: username}, (err, user) => {
             if (err) return reject(err);
             if (!user) return resolve("User not found");
-            console.log(password);
-            console.log(user.password);
+            User.update({username: username}, {$push: {loginAttempts: loginAttemptRecord}}).then().catch();
             bcrypt.compare(password, user.password, (err, result) => {
                 if (result === true) {
                     const token = jwt.sign({id: user._id}, process.env.JWT_SECRET);
@@ -102,6 +103,8 @@ UserSchema.pre('save', function(next) {
         })
         .catch(err => next(err));
 });
+
+UserSchema.plugin(mongoosePaginate);
 
 const User = mongoose.model('User', UserSchema);
 module.exports = User;
