@@ -71,6 +71,9 @@ app.use(function (req, res, next) {
 // Required login
 require('./app/user')(app);
 require('./app/scriptstore')(app);
+if (process.env.REPORTBOT_ENABLED === 'true') {
+    require('./app/reportbot')(app, io);
+}
 
 app.use((req, res) => {
     return res.status(404).send("Route not found");

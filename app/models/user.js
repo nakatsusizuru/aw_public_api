@@ -30,7 +30,11 @@ const UserSchema = new Schema({
         required: true
     },
     scriptTokens: [Object],
-    loginAttempts: [Object]
+    loginAttempts: [Object],
+    maxNumOfCommends: {type: Number},
+    maxNumOfReports: {type: Number},
+    commends: [Object],
+    reports: [Object]
 });
 
 UserSchema.statics.authenticate = (username, password, loginAttemptRecord) => {
