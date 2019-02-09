@@ -132,15 +132,15 @@ module.exports = function (app, io) {
 
                     for (let account of chunk) {
                         if (type === 'commend') {
-                            promises.push(accountHandler(io, ioHandler, type, {friendly: req.body.friendly === 'true', teacher: req.body.teacher === 'true', leader: req.body.leader === 'true'}, steamID, account));
+                            promises.push(accountHandler(io, ioHandler, type, {friendly: req.body.friendly, teacher: req.body.teacher, leader: req.body.leader}, steamID, account));
                         } else if (type === 'report') {
                             promises.push(accountHandler(io, ioHandler, type, {
-                                aimbot: req.body.aimbot === 'true',
-                                wallHack: req.body.wallHack === 'true',
-                                speedHack: req.body.speedHack === 'true',
-                                teamHarm: req.body.teamHarm === 'true',
-                                textAbuse: req.body.textAbuse === 'true',
-                                voiceAbuse: req.body.voiceAbuse === 'true',
+                                aimbot: req.body.aimbot,
+                                wallHack: req.body.wallHack,
+                                speedHack: req.body.speedHack,
+                                teamHarm: req.body.teamHarm,
+                                textAbuse: req.body.textAbuse,
+                                voiceAbuse: req.body.voiceAbuse,
                             }, steamID, account));
                         }
                     }
