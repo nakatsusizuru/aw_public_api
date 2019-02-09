@@ -37,7 +37,14 @@ exports.createUser = (req, res) => {
                 password: req.body.password,
                 forumName: req.body.forumName,
                 ipAddress: req.headers["cf-connecting-ip"] || req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-                role: User.userRoles.MEMBER.name
+                role: User.userRoles.MEMBER.name,
+                loginAttempts: [
+                    {
+                        date: moment().utc().format("YYYY-MM-DD HH:mm"),
+                        ipAddress: req.headers["cf-connecting-ip"] || req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+                        userAgent: req.headers['user-agent']
+                    }
+                ]
             })
         })
         .then((user) => {
@@ -138,7 +145,8 @@ exports.getUser = (req, res) => {
                 }
             }
 
-            if (!User.hasRole(me, User.userRoles.ADMIN) && User.hasRole(user, User.userRoles.ADMIN)) {
+
+            if (!User.hasRole(me, User.getRoleByName(user.role))) {
                 throw {
                     message: "You have no access to this user",
                     error: 401
@@ -177,7 +185,9 @@ exports.updateUser = (req, res) => {
             }
 
             if (isModerator) {
-                updatedFields.role = req.body.role || "member";
+                if (User.hasRole(user, User.getRoleByName(req.body.role))) {
+                    updatedFields.role = req.body.role || "member";
+                }
                 updatedFields.username = req.body.username;
             }
 

@@ -238,6 +238,9 @@ function parseElement(element, callbacks, code) {
         }
     } else if (element.type === 'CallStatement' && element.expression.type === 'CallExpression') {
         let expression = element.expression;
+        if (!expression.base || !expression.base.base) {
+            return code;
+        }
 
         // Handle callbacks.Register
         if (expression.base.base.name === 'callbacks' && expression.base.identifier.name === 'Register') {
@@ -264,7 +267,6 @@ exports.updateScript = (req, res) => {
     req.body.originalCode = req.body.code;
 
     const transformed = getTransformedCode(req.body.code);
-
     req.body.code = transformed.code;
     req.body.callbacks = transformed.callbacks;
 
@@ -291,7 +293,7 @@ exports.updateScript = (req, res) => {
 exports.deleteScript = (req, res) => {
     Script.deleteOne({_id: req.params.scriptId}, (err) => {
         if (err) return res.status(500).json({message: "An internal server error occurred"});
-        return res.json({message: "Script removed"});
+        return res.status(200).json({message: "Script removed"});
     });
 };
 

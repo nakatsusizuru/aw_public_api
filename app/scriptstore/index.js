@@ -19,7 +19,7 @@ module.exports = function(app) {
     app.route('/scripts/:scriptId')
         .get(middleware.isLoggedIn, middleware.hasRole(User.userRoles.MEMBER), controller.getScript)
         .put(middleware.isLoggedIn, middleware.hasRole(User.userRoles.MODERATOR), controller.updateScript)
-        // .delete(middleware.isLoggedIn, middleware.hasRole(User.userRoles.MODERATOR),  controller.deleteScript);
+        .delete(middleware.isLoggedIn, middleware.hasRole(User.userRoles.MODERATOR),  controller.deleteScript);
 
     app.route('/scripts/image/:scriptId')
         .get(controller.getImage);
