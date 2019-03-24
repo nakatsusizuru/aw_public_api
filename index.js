@@ -47,6 +47,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Public API
 require('./app/routing')(app);
 require('./app/translate')(app);
+require('./app/playerinfo')(app);
 require('./app/sharedesp')(app, io);
 require('./app/awusers')(app, io);
 
