@@ -1,2 +1,6 @@
 .idea/
 node_modules/
+.env
+cert/*.key
+cert/*.crt
+app/reportbot/accounts.json
